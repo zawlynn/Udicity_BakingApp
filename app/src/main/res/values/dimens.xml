@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="item_margin">10dp</dimen>
+    <dimen name="normal">20sp</dimen>
+    <dimen name="item_card_margin">5dp</dimen>
+</resources>
