@@ -3,4 +3,9 @@
     <dimen name="item_margin">10dp</dimen>
     <dimen name="normal">20sp</dimen>
     <dimen name="item_card_margin">5dp</dimen>
+    <dimen name="card_margin">5dp</dimen>
+    <dimen name="min_width_widget">200dp</dimen>
+    <dimen name="min_height_widget">160dp</dimen>
+    <dimen name="margin_large">10dp</dimen>
+    <dimen name="margin_medium">5dp</dimen>
 </resources>

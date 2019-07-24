@@ -30,7 +30,7 @@ public class DetailFragment extends Fragment implements OnInstructionClick {
     private IngredientAdapter ingredientAdapter;
     private StepAdapter stepAdapter;
     private OnRecipeClick onRecipeClick;
-    public static DetailFragment newInstance(Recipe recipe,OnRecipeClick listener) {
+    static DetailFragment newInstance(Recipe recipe, OnRecipeClick listener) {
         DetailFragment fragment = new DetailFragment();
         Bundle args = new Bundle();
         args.putParcelable(Constants.DATA, recipe);
@@ -38,7 +38,7 @@ public class DetailFragment extends Fragment implements OnInstructionClick {
         fragment.setListener(listener);
         return fragment;
     }
-    public void setListener(OnRecipeClick listener) {
+    private void setListener(OnRecipeClick listener) {
         this.onRecipeClick = listener;
     }
     @Override

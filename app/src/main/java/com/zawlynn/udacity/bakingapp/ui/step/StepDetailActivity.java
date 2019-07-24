@@ -20,10 +20,9 @@ public class StepDetailActivity extends AppCompatActivity {
         if (getIntent() != null && getIntent().hasExtra(Constants.DATA)) {
             Step step = getIntent().getParcelableExtra(Constants.DATA);
             setTitle(step.getShortDescription());
-            if(!getResources().getBoolean(R.bool.isTable)){
-                ActivityUtils.addFragment(this, R.id.container,
-                        StepDetailFragment.newInstance(step));
-            }
+            ActivityUtils.replaceFragment(this, R.id.container,
+                    StepDetailFragment.newInstance(step));
+
         }
     }
 }

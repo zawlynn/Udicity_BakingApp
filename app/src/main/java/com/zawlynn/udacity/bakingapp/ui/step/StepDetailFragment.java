@@ -1,7 +1,21 @@
+/*
+ * Copyright 2018 Dionysios Karatzas
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.zawlynn.udacity.bakingapp.ui.step;
 
-import android.app.Dialog;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -9,44 +23,47 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 
-
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelection;
+import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.ui.SimpleExoPlayerView;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
 import com.zawlynn.udacity.bakingapp.R;
 import com.zawlynn.udacity.bakingapp.constants.Constants;
 import com.zawlynn.udacity.bakingapp.databinding.StepFragmentBinding;
 import com.zawlynn.udacity.bakingapp.pojo.Step;
-
-import java.util.Objects;
-
-import static android.view.View.GONE;
+import com.zawlynn.udacity.bakingapp.utils.GlideApp;
 
 public class StepDetailFragment extends Fragment {
+    private static final String POSITION_KEY = "pos_k";
+    private static final String PLAY_WHEN_READY_KEY = "play_when_ready_k";
 
+    private SimpleExoPlayer mExoPlayer;
     private Step step;
-    private SimpleExoPlayer player;
-    private long playbackPosition;
-    private int currentWindow;
-    private boolean playWhenReady = true;
-    private Dialog fullScreenDialog;
-    private boolean isMovieinFullScreen = false;
-    private StepFragmentBinding binding;
 
+
+    private long mCurrentPosition = 0;
+    private boolean mPlayWhenReady = true;
+    private StepFragmentBinding binding;
+    public StepDetailFragment() {
+    }
     public static StepDetailFragment newInstance(Step step) {
         Bundle args = new Bundle();
         args.putParcelable(Constants.DATA, step);
@@ -54,7 +71,6 @@ public class StepDetailFragment extends Fragment {
         fragment.setArguments(args);
         return fragment;
     }
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -63,141 +79,89 @@ public class StepDetailFragment extends Fragment {
         }
     }
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
         binding = StepFragmentBinding.inflate(inflater, container, false);
-        return binding.getRoot();
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        if (Util.SDK_INT > 23) {
-            initializePlayer();
+        if (savedInstanceState != null && savedInstanceState.containsKey(POSITION_KEY)) {
+            mCurrentPosition = savedInstanceState.getLong(POSITION_KEY);
+            mPlayWhenReady = savedInstanceState.getBoolean(PLAY_WHEN_READY_KEY);
         }
+
+        binding.tvDesc.setText(step.getDescription());
+
+
+        if (!step.getThumbnailUrl().isEmpty()) {
+            GlideApp.with(this)
+                    .load(step.getThumbnailUrl())
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(R.mipmap.ic_logo)
+                    .into(binding.thumbnail);
+            binding.thumbnail.setVisibility(View.VISIBLE);
+        }
+
+        return binding.getRoot();
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if ((Util.SDK_INT <= 23 || player == null)) {
-            initializePlayer();
-        }
-    }
-
-    @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        binding.tvDesc.setText(step.getDescription());
-        initFullscreenDialog();
+        if (!TextUtils.isEmpty(step.getVideoUrl()))
+            initializePlayer(Uri.parse(step.getVideoUrl()));
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        if (Util.SDK_INT <= 23) {
-            releasePlayer();
-        }
+        releasePlayer();
     }
 
-    @Override
-    public void onStop() {
-        super.onStop();
-        if (Util.SDK_INT > 23) {
-            releasePlayer();
-        }
-    }
-
-
-    private void initializePlayer() {
-
-        if (player == null) {
-            player = ExoPlayerFactory.newSimpleInstance(new DefaultRenderersFactory(getContext()),
-                    new DefaultTrackSelector(),
-                    new DefaultLoadControl());
-            binding.playerView.setPlayer(player);
-            player.setPlayWhenReady(playWhenReady);
-            player.seekTo(currentWindow, playbackPosition);
-        }
-
-        Uri uri = null;
-
-        if (!TextUtils.isEmpty(step.getVideoUrl())) {
-            uri = Uri.parse(step.getVideoUrl());
-        }
-
-        if (uri == null && !TextUtils.isEmpty(step.getThumbnailUrl())) {
-            uri = Uri.parse(step.getThumbnailUrl());
-        }
-
-        if (uri != null) {
-            MediaSource mediaSource = buildMediaSource(uri);
-            player.prepare(mediaSource, true, false);
-        } else {
-            binding.playerView.setVisibility(GONE);
-            binding.videoContainer.setVisibility(GONE);
-        }
-    }
-
-    private MediaSource buildMediaSource(Uri uri) {
-        return new ExtractorMediaSource.Factory(
-                new DefaultHttpDataSourceFactory("udacity-course")).
-                createMediaSource(uri);
-    }
-
-    private void releasePlayer() {
-        if (player != null) {
-            playbackPosition = player.getCurrentPosition();
-            currentWindow = player.getCurrentWindowIndex();
-            playWhenReady = player.getPlayWhenReady();
-            player.release();
-            player = null;
-        }
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        if (binding.videoContainer.getVisibility() == View.VISIBLE) {
-            int currentOrientation = getResources().getConfiguration().orientation;
-            if (currentOrientation == Configuration.ORIENTATION_LANDSCAPE) {
-                openFullscreenDialog();
-            } else {
-                closeFullscreenDialog();
-            }
-        }
-    }
-
-    private void initFullscreenDialog() {
-        fullScreenDialog = new Dialog(Objects.requireNonNull(getActivity()),
-                android.R.style.Theme_Black_NoTitleBar_Fullscreen) {
-            public void onBackPressed() {
-                if (isMovieinFullScreen)
-                    closeFullscreenDialog();
-                super.onBackPressed();
-            }
-        };
-    }
-
-    private void openFullscreenDialog() {
-        binding.videoContainer.removeView(binding.playerView);
-        fullScreenDialog.addContentView(binding.playerView, new ViewGroup
-                .LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        isMovieinFullScreen = true;
-        fullScreenDialog.show();
-    }
-
-    private void closeFullscreenDialog() {
-        ((ViewGroup) binding.playerView.getParent()).removeView(binding.playerView);
-        binding.videoContainer.addView(binding.playerView);
-        isMovieinFullScreen = false;
-        fullScreenDialog.dismiss();
-    }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+
+    }
+
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putLong(POSITION_KEY, mCurrentPosition);
+        outState.putBoolean(PLAY_WHEN_READY_KEY, mPlayWhenReady);
+    }
+
+    private void initializePlayer(Uri mediaUri) {
+        if (mExoPlayer == null) {
+            DefaultBandwidthMeter bandwidthMeter = new DefaultBandwidthMeter();
+            TrackSelection.Factory videoTrackSelectionFactory = new AdaptiveTrackSelection.Factory(bandwidthMeter);
+            TrackSelector trackSelector = new DefaultTrackSelector(videoTrackSelectionFactory);
+
+            mExoPlayer = ExoPlayerFactory.newSimpleInstance(getContext(), trackSelector);
+
+            binding.playerView.setPlayer(mExoPlayer);
+            DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(getContext(),
+                    Util.getUserAgent(getContext(), getString(R.string.app_name)), bandwidthMeter);
+            MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(mediaUri);
+            mExoPlayer.prepare(videoSource);
+
+            if (mCurrentPosition != 0)
+                mExoPlayer.seekTo(mCurrentPosition);
+
+            mExoPlayer.setPlayWhenReady(mPlayWhenReady);
+            binding.playerView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void releasePlayer() {
+        if (mExoPlayer != null) {
+            mPlayWhenReady = mExoPlayer.getPlayWhenReady();
+            mCurrentPosition = mExoPlayer.getCurrentPosition();
+
+            mExoPlayer.stop();
+            mExoPlayer.release();
+            mExoPlayer = null;
+        }
     }
 }
