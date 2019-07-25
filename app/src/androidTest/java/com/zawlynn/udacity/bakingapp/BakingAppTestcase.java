@@ -18,15 +18,8 @@ package com.zawlynn.udacity.bakingapp;
 
 
 import androidx.test.InstrumentationRegistry;
-import androidx.test.espresso.intent.Intents;
-import androidx.test.rule.ActivityTestRule;
 import androidx.test.runner.AndroidJUnit4;
 
-import com.zawlynn.udacity.bakingapp.constants.Constants;
-import com.zawlynn.udacity.bakingapp.ui.detail.DetailActivity;
-import com.zawlynn.udacity.bakingapp.ui.main.MainActivity;
-
-import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 

@@ -22,7 +22,6 @@ import androidx.test.espresso.IdlingRegistry;
 import androidx.test.espresso.IdlingResource;
 import androidx.test.rule.ActivityTestRule;
 
-import com.zawlynn.udacity.bakingapp.ui.detail.DetailActivity;
 import com.zawlynn.udacity.bakingapp.ui.main.MainActivity;
 
 import org.junit.After;
