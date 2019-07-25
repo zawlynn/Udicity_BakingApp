@@ -13,6 +13,7 @@ import android.provider.SyncStateContract;
 import android.util.Log;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.zawlynn.udacity.bakingapp.BakingApplication;
 import com.zawlynn.udacity.bakingapp.R;
 import com.zawlynn.udacity.bakingapp.constants.Constants;
 import com.zawlynn.udacity.bakingapp.databinding.MainActivityBinding;
@@ -35,6 +36,7 @@ public class MainActivity extends AppCompatActivity implements OnRecipeClick {
         viewmodel.getLive_recipes().observe(this, recipes -> {
             if (recipes != null) {
                 adapter.submitList(recipes);
+                BakingApplication.getInstance().setIdleState(true);
             }
         });
         viewmodel.getMessage().observe(this,s -> {

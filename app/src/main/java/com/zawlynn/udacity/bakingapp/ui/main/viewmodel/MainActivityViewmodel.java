@@ -29,6 +29,7 @@ public class MainActivityViewmodel extends AndroidViewModel {
     private MutableLiveData<List<Recipe>> live_recipes=new MutableLiveData<>();
     public MainActivityViewmodel(@NonNull Application application) {
         super(application);
+        BakingApplication.getInstance().setIdleState(false);
         disposable= new CompositeDisposable();
         BakingApplication.getInstance().getDataComponent().inject(this);
         disposable = service.getRecipes().observeOn(Schedulers.io())
